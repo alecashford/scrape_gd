@@ -1,19 +1,49 @@
 import csv
 import urllib2, sys
 import json
-from time import sleep
+import time
 import re
+from functools import wraps
 from bs4 import BeautifulSoup
 
 BASE_QUERY = "https://www.glassdoor.com/Reviews/san-francisco-reviews-SRCH_IL.0,13_IM759_IP1.htm"
 DESIRED_KEYS = ["careerOpportunitiesRating", "compensationAndBenefitsRating", "cultureAndValuesRating", "industry", "industryName", "name", "numberOfRatings", "overallRating", "ratingDescription", "recommendToFriendRating", "sectorName", "seniorLeadershipRating", "website", "workLifeBalanceRating"]
 
+def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
+    def deco_retry(f):
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except ExceptionToCheck, e:
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    if logger:
+                        logger.warning(msg)
+                    else:
+                        print msg
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+
+    return deco_retry
+
+
 def get_soup_from_url(url):
-    # site = "https://www.glassdoor.com/Reviews/san-francisco-reviews-SRCH_IL.0,13_IM759_IP1.htm"
+    page = make_http_request(url)
+    return BeautifulSoup(page)
+
+@retry(urllib2.URLError, tries=4, delay=3, backoff=2)
+def make_http_request(url):
     hdr = {'User-Agent': 'Mozilla/5.0'}
     req = urllib2.Request(url, headers=hdr)
     page = urllib2.urlopen(req)
-    return BeautifulSoup(page)
+    return page
 
 def get_page_count(url):
     soup = get_soup_from_url(url)
@@ -27,7 +57,7 @@ def get_company_size(url):
 
 def write_to_csv(line):
     f = open('output.csv','a')
-    f.write(line) #Give your csv text here.
+    f.write(line) # Give your csv text here.
     f.close()
 
 def scrape_gd_results_single_page(url):
@@ -60,13 +90,11 @@ def key_exists(obj, key):
             return obj[key].encode('utf-8')
         elif obj.has_key(key):
             return obj[key]
-        else:
-            return ""
     else:
         return ""
 
 def formatted_line(obj):
-    return "{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n".format(
+    return '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"\n'.format(
             key_exists(obj, "name"),
             key_exists(obj, "website"),
             key_exists(obj, "industry"),
@@ -88,7 +116,7 @@ def iterate_through_every_gd_page():
     for i in range(1, number_of_pages + 1):
         query = "https://www.glassdoor.com/Reviews/san-francisco-reviews-SRCH_IL.0,13_IM759_IP{}.htm".format(i)
         page_results = scrape_gd_results_single_page(query)
-        sleep(5)
+        time.sleep(5)
         # print formatted_line(page_results)
 
 
@@ -100,10 +128,7 @@ def remove_http_www(site):
 
 def get_info(company_name, company_site):
     url = "http://api.glassdoor.com/api/api.htm?t.p=95590&t.k=kuoWqawn5sQ&format=json&v=1&action=employers&q=" + urllib2.quote(company_name)
-    hdr = {'User-Agent': 'Mozilla/5.0'}
-    req = urllib2.Request(url,headers=hdr)
-    response = urllib2.urlopen(req)
-    data = json.load(response)
+    data = json.load(make_http_request(url))
     if data["response"]["totalRecordCount"] == 1:
         for idx, company in enumerate(data["response"]["employers"]):
             if remove_http_www(company["website"]) == remove_http_www(company_site):
@@ -122,3 +147,5 @@ def main():
 
 if __name__== "__main__":
   main()
+
+
