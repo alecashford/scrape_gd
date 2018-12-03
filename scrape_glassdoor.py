@@ -129,7 +129,7 @@ def remove_http_www(site):
 def get_info(company_name, company_site):
     url = "http://api.glassdoor.com/api/api.htm?t.p=95590&t.k=kuoWqawn5sQ&format=json&v=1&action=employers&q=" + urllib2.quote(company_name)
     data = json.load(make_http_request(url))
-    if response in data:
+    if "response" in data:
         if data["response"]["totalRecordCount"] == 1:
             for idx, company in enumerate(data["response"]["employers"]):
                 if remove_http_www(company["website"]) == remove_http_www(company_site):
