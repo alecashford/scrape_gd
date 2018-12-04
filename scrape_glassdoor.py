@@ -165,7 +165,7 @@ def get_info(company_name, company_site):
         else:
             return None
     else:
-        return None
+        return {}
 
 def main():
     iterate_through_every_gd_page()
