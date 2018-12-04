@@ -94,11 +94,11 @@ def scrape_gd_results_single_page(url):
         # d = {key: value for (key, value) in extra_info_from_api if key in DESIRED_KEYS}
 
         # scraped_data.append(extra_info_from_api)
-
+        print extra_info_from_api
         all_data = extra_info_from_api.copy()
         all_data.update(extra_info_from_page)
 
-        print formatted_line(all_data)
+        # print formatted_line(all_data)
         write_to_csv(formatted_line(all_data))
 
     # return scraped_data
@@ -164,8 +164,7 @@ def get_info(company_name, company_site):
                     return data["response"]["employers"][int(idx)]
         else:
             return {}
-    else:
-        return {}
+    return {}
 
 def main():
     iterate_through_every_gd_page()
