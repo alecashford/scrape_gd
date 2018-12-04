@@ -157,7 +157,7 @@ def get_info(company_name, company_site):
                 if remove_http_www(company["website"]) == remove_http_www(company_site):
                     return data["response"]["employers"][int(idx)]
                 else:
-                    return None
+                    return {}
         elif data["response"]["totalRecordCount"] > 1:
             for idx, company in enumerate(data["response"]["employers"]):
                 if remove_http_www(company["website"]) == remove_http_www(company_site):
