@@ -85,7 +85,7 @@ def scrape_gd_results_single_page(url):
         company_name = memory[0].encode_contents().strip() if memory else ""
         memory = company_module.find_all("span", class_="url")
         company_website = memory[0].encode_contents().strip() if memory else ""
-        company_gd_url = "https://www.glassdoor.com{}".format(company_module.find_all("a", class_="tightAll h2")[0]['href']) # this needs fixing; getting error: UnicodeEncodeError: 'ascii' codec can't encode character u'\xe9' in position 26: ordinal not in range(128)
+        company_gd_url = u"https://www.glassdoor.com{}".format(company_module.find_all("a", class_="tightAll h2")[0]['href']) # this needs fixing; getting error: UnicodeEncodeError: 'ascii' codec can't encode character u'\xe9' in position 26: ordinal not in range(128)
         extra_info_from_api = get_info(company_name, company_website)
         extra_info_from_page = get_more_info_from_company_page(company_gd_url)
         # print extra_info_from_page
