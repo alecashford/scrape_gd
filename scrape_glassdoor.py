@@ -50,10 +50,24 @@ def get_page_count(url):
     page_count = soup.find_all("div", class_="count margBot floatLt tightBot")
     return int(re.search(r'(?<=of\ )(.*)(?=\ Companies)', page_count[0].text).group().replace(',', ''))
 
-def get_company_size(url):
+def get_more_info_from_company_page(url):
     soup = get_soup_from_url(url)
-    size = soup.find_all("div", id_="EmpBasicInfo").find_all("div", class_="value")
-    return re.sub(' employees', '', size)
+    # size = soup.find_all("div", id_="EmpBasicInfo").find_all("div", class_="value")
+    try:
+        size = soup.select("#EmpBasicInfo .info .infoEntity")[2].select(".value")[0].get_text()
+    except:
+        size = ""
+    try:
+        headquarters = soup.select("#EmpBasicInfo .info .infoEntity")[1].select(".value")[0].get_text()
+    except:
+        headquarters = ""
+    try:
+        employer_description = soup.select("#EmpBasicInfo .empDescription")[0]["data-full"]
+        employer_description = re.sub('"', "'", employer_description)  
+    except:
+        employer_description = ""
+    return {"size" : size, "headquarters" : headquarters, "employer_description" : employer_description}
+    # return [size, headquarters, employer_description]
 
 def write_to_csv(line):
     f = open('output.csv','a')
@@ -64,25 +78,30 @@ def scrape_gd_results_single_page(url):
     soup = get_soup_from_url(url)
     all_company_modules_on_page = soup.find_all("div", class_="eiHdrModule module snug ")
 
-    scraped_data = []
+    # scraped_data = []
 
     for company_module in all_company_modules_on_page:
         memory = company_module.find_all("a", class_="tightAll h2")
         company_name = memory[0].encode_contents().strip() if memory else ""
         memory = company_module.find_all("span", class_="url")
         company_website = memory[0].encode_contents().strip() if memory else ""
-        # company_gd_url = "www.glassdoor.com{}".format(company_module.find_all("a", class_="tightAll h2")[0]['href']) # this needs fixing; getting error: UnicodeEncodeError: 'ascii' codec can't encode character u'\xe9' in position 26: ordinal not in range(128)
+        company_gd_url = "https://www.glassdoor.com{}".format(company_module.find_all("a", class_="tightAll h2")[0]['href']) # this needs fixing; getting error: UnicodeEncodeError: 'ascii' codec can't encode character u'\xe9' in position 26: ordinal not in range(128)
         extra_info_from_api = get_info(company_name, company_website)
-        # company_size = get_company_size(company_gd_url) # add this later
+        extra_info_from_page = get_more_info_from_company_page(company_gd_url)
+        # print extra_info_from_page
         # extra_info_from_api["size"] = company_size
 
         # d = {key: value for (key, value) in extra_info_from_api if key in DESIRED_KEYS}
 
-        scraped_data.append(extra_info_from_api)
-        print formatted_line(extra_info_from_api)
-        write_to_csv(formatted_line(extra_info_from_api))
+        # scraped_data.append(extra_info_from_api)
 
-    return scraped_data
+        all_data = extra_info_from_api.copy()
+        all_data.update(extra_info_from_page)
+
+        print formatted_line(all_data)
+        write_to_csv(formatted_line(all_data))
+
+    # return scraped_data
 
 def key_exists(obj, key):
     if obj:
@@ -94,12 +113,15 @@ def key_exists(obj, key):
         return ""
 
 def formatted_line(obj):
-    return '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"\n'.format(
+    return '"{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}","{}"\n'.format(
             key_exists(obj, "name"),
             key_exists(obj, "website"),
+            key_exists(obj, "size"),
+            key_exists(obj, "headquarters"),
             key_exists(obj, "industry"),
             key_exists(obj, "industryName"),
             key_exists(obj, "sectorName"),
+            key_exists(obj, "employer_description"),
             key_exists(obj, "numberOfRatings"),
             key_exists(obj, "careerOpportunitiesRating"),
             key_exists(obj, "compensationAndBenefitsRating"),
